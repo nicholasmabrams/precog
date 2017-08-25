@@ -1,5 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import UUID from '../util/UUID.js';
+
 // Route data.
 import routeData from './../route-data';
 
@@ -8,6 +10,8 @@ class NavBar extends React.Component {
 	constructor(props){
 		super(props);
 		this.handleLogoutFromUI = this.handleLogoutFromUI.bind(this);
+		this.dynamicallyCreateNavigationItems = this.dynamicallyCreateNavigationItems.bind(this);
+		this.UUID = new UUID(routeData.length);
 	}
 
 	handleLogoutFromUI(event){
@@ -15,34 +19,56 @@ class NavBar extends React.Component {
 		this.props.logout();
 	}
 
+	dynamicallyCreateNavigationItems(item){ 
+			const templateItem = (
+				<li key={this.UUID.output()}>
+					<NavLink 
+						key={this.UUID.output()}
+						to={item.path}> {item.label}
+					</NavLink>
+				</li>
+			),
+			LogOutComponent = (
+				<li key={this.UUID.output()}>
+					<a onClick={this.handleLogoutFromUI} href="#!dsfs">Logout</a>
+				</li>
+			),
+			normalizedItemName = item.label.toLowerCase().replace(' ', '_');
+
+			// Allow items to flow through the filter, act on the ones defined below.
+			switch (normalizedItemName){
+				// Toggle logged in or logged out link.
+				case 'login': {
+					const LoginComponent = templateItem;
+					
+					return this.props.loggedIn? LogOutComponent : LoginComponent;
+				}
+				// No need to register if the user is logged in.
+				case 'register': {
+					if (this.props.loggedIn) return false;
+					break;
+				}
+				// Only enable new posts for logged-in users.
+				case 'new_post': {
+					if (!this.props.loggedIn) return false;
+					break;
+				}
+				// This is intentional to stop react cli from complaining for no reason here.
+				default: break;
+			}
+
+			// Anthing not acted upon by here has the generic template for the nav item.
+			return templateItem;
+	}
+
 	render(){
 		return (
-			<nav>
-				{routeData.map((item)=>{
-					let navItem;
-					switch (item.label.toLowerCase()){
-						// Toggle logged in or logged out.
-						case 'login':
-							this.props.loggedIn? 
-								navItem = <a onClick={this.handleLogoutFromUI} href="#">Logout</a>  
-								: navItem = <NavLink to='/login'>Login</NavLink>;
-								
-								return navItem;
-						break;
-
-						case 'register':
-							// No need to register if the user is logged in.
-							if (this.props.loggedIn){
-								return;
-							}
-						break;
-					}
-					return (<NavLink key={item.label} 
-									 to={item.path}> {item.label}
-							</NavLink>);
-				})}
-			</nav>
-		);
+				<nav>
+					<ul>
+						{routeData.map(this.dynamicallyCreateNavigationItems)}
+					</ul>
+				</nav>
+			);
 		}
 }
 
